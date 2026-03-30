@@ -1,0 +1,48 @@
+# Build outputs
+build/
+dist/
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!cortex-m33/cmake/*.cmake
+!cortex-a35/cmake/*.cmake
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*~
+*.orig
+
+# STM32CubeIDE
+Debug/
+Release/
+*.launch
+.settings/
+.project
+.cproject
+
+# Compiler artifacts
+*.o
+*.d
+*.a
+*.so
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Logs
+*.log
