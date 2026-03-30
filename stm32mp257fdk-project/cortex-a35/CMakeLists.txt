@@ -8,7 +8,8 @@ add_compile_options(
     -Wall
     -Wextra
     -Wpedantic
-    $<$<CONFIG:Debug>:-g3 -O0>
+    $<$<CONFIG:Debug>:-g3>
+    $<$<CONFIG:Debug>:-O0>
     $<$<CONFIG:Release>:-O2>
 )
 

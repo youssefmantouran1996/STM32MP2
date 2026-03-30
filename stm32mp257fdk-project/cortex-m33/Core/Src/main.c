@@ -1,94 +1,95 @@
 /**
  * @file    main.c
- * @brief   STM32MP257FDK — Cortex-M33 firmware entry point
+ * @brief   STM32MP257FDK — Cortex-M33 firmware entry point.
  *
  * The Cortex-M33 runs as a coprocessor alongside the Cortex-A35.
- * On boot, OpenSTLinux on the A35 loads this firmware via remoteproc.
+ * OpenSTLinux on the A35 loads this firmware via remoteproc, which also
+ * populates the OpenAMP resource table (shared/ipc/resource_table.c) with
+ * the DDR addresses of the vring ring buffers before starting this core.
  *
- * IPC with the A35 is handled through OpenAMP / RPMsg virtual channels
- * defined in shared/ipc/resource_table.h.
+ * Startup sequence
+ * ────────────────
+ * 1. HAL + GPIO init
+ * 2. UART4 log console (115200 baud on PD6/PD5)
+ * 3. IPC init: reads vring addresses from resource table, sends RPMsg NS
+ *    announcement so Linux creates /dev/ttyRPMSG0
+ * 4. Main loop: toggle LED, poll IPC for commands from A35
+ *
+ * IPC protocol (see ipc_handler.h for full documentation):
+ *   A35 → M33  5-byte command:   [0xAA][CMD][AL][AH][0x55]
+ *   M33 → A35  8-byte response:  [0xBB][CMD][AL][AH][ST][T0][T1][0x55]
  */
 
 #include "main.h"
+#include "uart_log.h"
+#include "ipc_handler.h"
 #include <stdint.h>
 
-/* ─── Private function prototypes ──────────────────────────────────────────── */
+/* ── Private function prototypes ──────────────────────────────────────────── */
 static void SystemClock_Config(void);
 static void GPIO_Init(void);
-static void IPC_Init(void);
 
-/* ─── Application entry point ─────────────────────────────────────────────── */
+/* ── LED blink interval (can be changed by IPC_CMD_LED_BLINK) ──────────── */
+volatile uint32_t g_blink_ms = 500U;
+
+/* ── Application entry point ─────────────────────────────────────────────── */
 int main(void) {
-    /* HAL initialisation — configures SysTick, flash, etc. */
     HAL_Init();
-
-    /* Configure system clocks */
     SystemClock_Config();
-
-    /* Initialise peripherals */
     GPIO_Init();
 
-    /* Initialise OpenAMP IPC with the Cortex-A35 */
+    uart_log_init();
+    LOG_INFO("STM32MP257FDK M33 firmware starting");
+    LOG_INFO("HAL tick = %lu ms", (unsigned long)HAL_GetTick());
+
     IPC_Init();
 
-    /* ── Main loop ────────────────────────────────────────────────────────── */
-    while (1) {
-        /* Toggle user LED to indicate the M33 is alive */
-        HAL_GPIO_TogglePin(USER_LED_GPIO_PORT, USER_LED_PIN);
-        HAL_Delay(500);
+    uint32_t last_toggle = HAL_GetTick();
 
-        /*
-         * Poll / process OpenAMP RPMsg messages from the A35.
-         * Replace this with your application logic.
-         */
+    while (1) {
+        /* Toggle LED at g_blink_ms interval to show the core is alive */
+        uint32_t now = HAL_GetTick();
+        if ((now - last_toggle) >= g_blink_ms) {
+            HAL_GPIO_TogglePin(USER_LED_GPIO_PORT, USER_LED_PIN);
+            last_toggle = now;
+        }
+
+        /* Process incoming RPMsg messages from the A35 */
+        IPC_Process();
     }
 }
 
-/* ─── System clock configuration ──────────────────────────────────────────── */
+/* ── System clock configuration ──────────────────────────────────────────── */
 static void SystemClock_Config(void) {
     /*
-     * The STM32MP257 clock tree is complex and shared with the A35.
-     * In production, clock configuration is done by TF-A / U-Boot.
-     * For bare-metal testing, configure only the clocks owned by the M33.
+     * On the STM32MP257FDK the clock tree is configured by TF-A/U-Boot
+     * before remoteproc starts the M33.  Nothing to do here for the
+     * remoteproc use case.
      *
-     * Refer to: STM32CubeMX → Clock Configuration tab
-     * and the STM32MP25 Reference Manual (RM0457), section "RCC".
+     * For bare-metal JTAG bring-up, configure the M33 clock domain here
+     * using HAL_RCC_OscConfig() and HAL_RCC_ClockConfig().
      */
 }
 
-/* ─── GPIO initialisation ─────────────────────────────────────────────────── */
+/* ── GPIO initialisation ─────────────────────────────────────────────────── */
 static void GPIO_Init(void) {
     GPIO_InitTypeDef gpio = {0};
 
+    /* User LED on GPIOH pin 13 */
     __HAL_RCC_GPIOH_CLK_ENABLE();
-
     gpio.Pin   = USER_LED_PIN;
     gpio.Mode  = GPIO_MODE_OUTPUT_PP;
     gpio.Pull  = GPIO_NOPULL;
     gpio.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(USER_LED_GPIO_PORT, &gpio);
+    HAL_GPIO_WritePin(USER_LED_GPIO_PORT, USER_LED_PIN, GPIO_PIN_RESET);
 }
 
-/* ─── OpenAMP IPC initialisation ──────────────────────────────────────────── */
-static void IPC_Init(void) {
-    /*
-     * Initialise the OpenAMP / RPMsg stack.
-     * The resource table in shared/ipc/resource_table.h tells the A35
-     * where to find the shared memory ring buffers.
-     *
-     * Steps:
-     *   1. Initialise the shared memory region (no-cache / non-bufferable)
-     *   2. Initialise the virtual driver (VDEV) and vring descriptors
-     *   3. Register RPMsg endpoints for each IPC channel
-     *
-     * See ST application note AN5903 and the STM32CubeMP2 OpenAMP examples.
-     */
-}
-
-/* ─── HAL error handler ───────────────────────────────────────────────────── */
+/* ── HAL error handler ───────────────────────────────────────────────────── */
 void Error_Handler(void) {
     __disable_irq();
+    LOG_ERR("Error_Handler called — spinning");
     while (1) {
-        /* Spin — attach debugger to inspect fault registers */
+        /* Attach a JTAG debugger to inspect the call stack */
     }
 }

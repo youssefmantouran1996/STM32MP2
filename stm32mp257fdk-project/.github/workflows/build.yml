@@ -1,0 +1,81 @@
+name: Build
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  # ── Cortex-M33 firmware ──────────────────────────────────────────────────
+  build-m33:
+    name: M33 Firmware (arm-none-eabi-gcc)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ARM GCC toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            gcc-arm-none-eabi \
+            binutils-arm-none-eabi \
+            ninja-build \
+            cmake
+
+      - name: Configure (Debug)
+        run: |
+          cmake -S cortex-m33 -B build/m33 \
+            --toolchain cortex-m33/cmake/toolchain-m33.cmake \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -GNinja
+
+      - name: Build
+        run: cmake --build build/m33 --parallel
+
+      - name: Print firmware size
+        run: arm-none-eabi-size build/m33/stm32mp257fdk_m33
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: m33-firmware
+          path: |
+            build/m33/stm32mp257fdk_m33
+            build/m33/stm32mp257fdk_m33.bin
+          retention-days: 14
+
+  # ── Cortex-A35 Linux app ────────────────────────────────────────────────
+  build-a35:
+    name: A35 App (aarch64-linux-gnu-gcc)
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install AArch64 cross-compiler
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu \
+            ninja-build \
+            cmake
+
+      - name: Configure (Release)
+        run: |
+          cmake -S cortex-a35 -B build/a35 \
+            --toolchain cortex-a35/cmake/toolchain-aarch64.cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -GNinja
+
+      - name: Build
+        run: cmake --build build/a35 --parallel
+
+      - name: Upload app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: a35-app
+          path: build/a35/stm32mp257fdk_app
+          retention-days: 14

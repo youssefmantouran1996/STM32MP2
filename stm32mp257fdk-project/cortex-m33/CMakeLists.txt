@@ -37,15 +37,33 @@ add_link_options(
 )
 
 # ─── Source files ────────────────────────────────────────────────────────────
-# NOTE: Copy STM32CubeMP2 HAL sources here after downloading from st.com
 set(SOURCES
+    # Startup
+    Core/Startup/startup_stm32mp257fxx_m33.s
+
+    # Application
     Core/Src/main.c
     Core/Src/stm32mp2xx_hal_msp.c
     Core/Src/stm32mp2xx_it.c
-    # Drivers/STM32MP2xx_HAL_Driver/Src/stm32mp2xx_hal.c
-    # Drivers/STM32MP2xx_HAL_Driver/Src/stm32mp2xx_hal_gpio.c
-    # Drivers/STM32MP2xx_HAL_Driver/Src/stm32mp2xx_hal_uart.c
-    # Add more HAL sources as needed
+    Core/Src/system_stm32mp2xx.c
+    Core/Src/uart_log.c
+    Core/Src/ipc_handler.c
+
+    # OpenAMP resource table (placed in .resource_table ELF section)
+    ../shared/ipc/resource_table.c
+
+    # STM32MP2xx HAL drivers
+    Drivers/STM32MP2xx_HAL_Driver/Src/stm32mp2xx_hal.c
+    Drivers/STM32MP2xx_HAL_Driver/Src/stm32mp2xx_hal_cortex.c
+    Drivers/STM32MP2xx_HAL_Driver/Src/stm32mp2xx_hal_gpio.c
+    Drivers/STM32MP2xx_HAL_Driver/Src/stm32mp2xx_hal_rcc.c
+    Drivers/STM32MP2xx_HAL_Driver/Src/stm32mp2xx_hal_rcc_ex.c
+    Drivers/STM32MP2xx_HAL_Driver/Src/stm32mp2xx_hal_pwr.c
+    Drivers/STM32MP2xx_HAL_Driver/Src/stm32mp2xx_hal_pwr_ex.c
+    Drivers/STM32MP2xx_HAL_Driver/Src/stm32mp2xx_hal_uart.c
+    Drivers/STM32MP2xx_HAL_Driver/Src/stm32mp2xx_hal_uart_ex.c
+    Drivers/STM32MP2xx_HAL_Driver/Src/stm32mp2xx_hal_ipcc.c
+    Drivers/STM32MP2xx_HAL_Driver/Src/stm32mp2xx_hal_exti.c
 )
 
 set(INCLUDES
@@ -54,7 +72,6 @@ set(INCLUDES
     Drivers/STM32MP2xx_HAL_Driver/Inc
     Drivers/CMSIS/Device/ST/STM32MP2xx/Include
     Drivers/CMSIS/Include
-    # Middlewares/OpenAMP
 )
 
 # ─── Target definition ───────────────────────────────────────────────────────
