@@ -21,6 +21,8 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             gcc-arm-none-eabi \
             binutils-arm-none-eabi \
+            libnewlib-arm-none-eabi \
+            libnewlib-dev \
             ninja-build \
             cmake
 
