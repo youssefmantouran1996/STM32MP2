@@ -25,20 +25,18 @@ jobs:
             cmake
 
       - name: Configure (Debug)
-        working-directory: stm32mp257fdk-project
         run: |
-          cmake -S cortex-m33 -B build/m33 \
-            --toolchain cortex-m33/cmake/toolchain-m33.cmake \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -GNinja
+          cmake -S stm32mp257fdk-project/cortex-m33 \
+                -B stm32mp257fdk-project/build/m33 \
+                --toolchain "$GITHUB_WORKSPACE/stm32mp257fdk-project/cortex-m33/cmake/toolchain-m33.cmake" \
+                -DCMAKE_BUILD_TYPE=Debug \
+                -GNinja
 
       - name: Build
-        working-directory: stm32mp257fdk-project
-        run: cmake --build build/m33 --parallel
+        run: cmake --build stm32mp257fdk-project/build/m33 --parallel
 
       - name: Print firmware size
-        working-directory: stm32mp257fdk-project
-        run: arm-none-eabi-size build/m33/stm32mp257fdk_m33
+        run: arm-none-eabi-size stm32mp257fdk-project/build/m33/stm32mp257fdk_m33
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v4
@@ -67,16 +65,15 @@ jobs:
             cmake
 
       - name: Configure (Release)
-        working-directory: stm32mp257fdk-project
         run: |
-          cmake -S cortex-a35 -B build/a35 \
-            --toolchain cortex-a35/cmake/toolchain-aarch64.cmake \
-            -DCMAKE_BUILD_TYPE=Release \
-            -GNinja
+          cmake -S stm32mp257fdk-project/cortex-a35 \
+                -B stm32mp257fdk-project/build/a35 \
+                --toolchain "$GITHUB_WORKSPACE/stm32mp257fdk-project/cortex-a35/cmake/toolchain-aarch64.cmake" \
+                -DCMAKE_BUILD_TYPE=Release \
+                -GNinja
 
       - name: Build
-        working-directory: stm32mp257fdk-project
-        run: cmake --build build/a35 --parallel
+        run: cmake --build stm32mp257fdk-project/build/a35 --parallel
 
       - name: Upload app artifact
         uses: actions/upload-artifact@v4
