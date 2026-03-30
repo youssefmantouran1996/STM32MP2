@@ -22,4 +22,17 @@
 
 #include "stm32mp2xx_hal_def.h"
 
+#ifdef HAL_RCC_MODULE_ENABLED
+  #include "stm32mp2xx_hal_rcc.h"
+#endif
+#ifdef HAL_GPIO_MODULE_ENABLED
+  #include "stm32mp2xx_hal_gpio.h"
+#endif
+#ifdef HAL_CORTEX_MODULE_ENABLED
+  #include "stm32mp2xx_hal_cortex.h"
+#endif
+#ifdef HAL_UART_MODULE_ENABLED
+  #include "stm32mp2xx_hal_uart.h"
+#endif
+
 #endif /* STM32MP2XX_HAL_CONF_H */

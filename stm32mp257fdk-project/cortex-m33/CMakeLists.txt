@@ -22,7 +22,8 @@ add_compile_options(
     -ffunction-sections
     $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
     $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
-    $<$<CONFIG:Debug>:-Og -g3>
+    $<$<CONFIG:Debug>:-Og>
+    $<$<CONFIG:Debug>:-g3>
     $<$<CONFIG:Release>:-O2>
 )
 
@@ -50,9 +51,9 @@ set(SOURCES
 set(INCLUDES
     Core/Inc
     ../shared/ipc
-    # Drivers/STM32MP2xx_HAL_Driver/Inc
-    # Drivers/CMSIS/Device/ST/STM32MP2xx/Include
-    # Drivers/CMSIS/Include
+    Drivers/STM32MP2xx_HAL_Driver/Inc
+    Drivers/CMSIS/Device/ST/STM32MP2xx/Include
+    Drivers/CMSIS/Include
     # Middlewares/OpenAMP
 )
 
