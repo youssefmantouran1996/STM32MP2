@@ -13,19 +13,27 @@ add_compile_options(
     $<$<CONFIG:Release>:-O2>
 )
 
-# ─── Application sources ─────────────────────────────────────────────────────
-set(SOURCES
-    app/src/main.cpp
-    app/src/ipc_rpmsg.cpp
-)
-
 set(INCLUDES
     app/include
     ../shared/ipc
 )
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+# ─── Shared IPC + OTA library ────────────────────────────────────────────────
+add_library(ipc_ota STATIC
+    app/src/ipc_rpmsg.cpp
+    app/src/ota_manager.cpp
+)
+target_include_directories(ipc_ota PUBLIC ${INCLUDES})
+
+# ─── Demo application ────────────────────────────────────────────────────────
+add_executable(${PROJECT_NAME} app/src/main.cpp)
 target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDES})
+target_link_libraries(${PROJECT_NAME} PRIVATE ipc_ota)
+
+# ─── OTA update tool ─────────────────────────────────────────────────────────
+add_executable(ota_update app/src/ota_cli.cpp)
+target_include_directories(ota_update PRIVATE ${INCLUDES})
+target_link_libraries(ota_update PRIVATE ipc_ota)
 
 # ─── Tests ───────────────────────────────────────────────────────────────────
 option(BUILD_TESTS "Build unit tests" OFF)

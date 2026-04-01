@@ -31,12 +31,16 @@
  */
 
 #include "ipc_handler.h"
+#include "fw_version.h"
 #include "resource_table.h"
 #include "virt_uart.h"
 #include "main.h"
 #include "uart_log.h"
 #include "stm32mp2xx_hal.h"
 #include <string.h>
+
+/* Defined in main.c; updated by IPC_CMD_LED_BLINK */
+extern volatile uint32_t g_blink_ms;
 
 /* ── RPMsg header (16 bytes, virtio rpmsg spec) ──────────────────────────── */
 typedef struct __attribute__((packed)) {
@@ -69,8 +73,9 @@ static VringAvail *s_rx_avail = NULL;
 static VringUsed  *s_rx_used  = NULL;
 static uint16_t    s_rx_last_avail_idx = 0;
 
-static uint32_t    s_local_addr = RPMSG_ADDR_ANY; /* Assigned after NS ACK */
-static uint8_t     s_ipc_ready  = 0;
+static uint32_t    s_local_addr  = RPMSG_ADDR_ANY; /* Assigned after NS ACK */
+static uint8_t     s_ipc_ready   = 0;
+static uint8_t     s_ota_pending = 0; /* Set by IPC_CMD_OTA_PREPARE handler */
 
 /* ── Vring size calculations ─────────────────────────────────────────────── */
 #define VRING_DESC_BYTES   (VRING_NUM_BUFFERS * (uint32_t)sizeof(VringDesc))
@@ -201,13 +206,40 @@ static void ipc_handle_message(const uint8_t *payload, uint16_t len) {
             break;
 
         case IPC_CMD_LED_BLINK:
-            /* Store new blink interval; main loop reads g_blink_ms */
-            /* (exported via weak symbol — override in main.c if needed) */
-            LOG_INFO("IPC: blink interval = %u ms", (unsigned)arg);
+            /* Update blink interval; main loop reads g_blink_ms */
+            g_blink_ms = (arg == 0U) ? 500U : (uint32_t)arg;
+            LOG_INFO("IPC: blink interval = %u ms", (unsigned)g_blink_ms);
             break;
 
         case IPC_CMD_GET_STATUS:
             LOG_INFO("IPC: STATUS request, tick=%lu", (unsigned long)tick);
+            break;
+
+        case IPC_CMD_GET_VERSION:
+            /*
+             * Pack version into the response fields:
+             *   ARG_LO = major, ARG_HI = minor, STATUS = patch
+             * The tick fields carry the build timestamp (lower 16 bits).
+             */
+            arg    = (uint16_t)g_fw_version.major
+                   | ((uint16_t)g_fw_version.minor << 8U);
+            status = g_fw_version.patch;
+            tick   = (uint32_t)(g_fw_version.build_timestamp & 0xFFFFU);
+            LOG_INFO("IPC: VERSION request — v%u.%u.%u",
+                     (unsigned)g_fw_version.major,
+                     (unsigned)g_fw_version.minor,
+                     (unsigned)g_fw_version.patch);
+            break;
+
+        case IPC_CMD_OTA_PREPARE:
+            /*
+             * Signal that the A35 is about to stop remoteproc and replace
+             * the firmware image.  Freeze IPC processing after this ACK so
+             * we don't touch shared DDR while the A35 performs the update.
+             */
+            LOG_INFO("IPC: OTA_PREPARE received — halting IPC after ACK");
+            s_ota_pending = 1U;
+            status = IPC_OTA_READY;
             break;
 
         default:
@@ -263,9 +295,13 @@ void IPC_Init(void) {
     LOG_INFO("IPC: init complete — waiting for A35");
 }
 
+uint8_t IPC_IsOtaPending(void) {
+    return s_ota_pending;
+}
+
 void IPC_Process(void) {
-    if (!s_ipc_ready) {
-        return;
+    if (!s_ipc_ready || s_ota_pending) {
+        return;  /* Frozen after OTA_PREPARE — remoteproc will stop us shortly */
     }
 
     /* Poll: check if the A35 has posted new messages to the RX avail ring */
