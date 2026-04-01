@@ -27,10 +27,12 @@ inline constexpr uint8_t EOF_MARK = 0x55U;
 
 /* ── Command identifiers ────────────────────────────────────────────────── */
 enum class Cmd : uint8_t {
-    Ping      = 0x01,
-    LedSet    = 0x02,
-    LedBlink  = 0x03,
-    GetStatus = 0x04,
+    Ping       = 0x01,
+    LedSet     = 0x02,
+    LedBlink   = 0x03,
+    GetStatus  = 0x04,
+    GetVersion = 0x05,  /**< ARG_LO=major, ARG_HI=minor, STATUS=patch */
+    OtaPrepare = 0x06,  /**< Ask M33 to freeze IPC before remoteproc stop */
 };
 
 /* ── Response status codes ──────────────────────────────────────────────── */

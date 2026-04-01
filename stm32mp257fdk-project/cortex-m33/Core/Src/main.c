@@ -21,9 +21,19 @@
  */
 
 #include "main.h"
+#include "fw_version.h"
 #include "uart_log.h"
 #include "ipc_handler.h"
 #include <stdint.h>
+
+/* ── Firmware version (reported via IPC_CMD_GET_VERSION) ─────────────────── */
+const FwVersion g_fw_version = {
+    .major           = FW_VERSION_MAJOR,
+    .minor           = FW_VERSION_MINOR,
+    .patch           = FW_VERSION_PATCH,
+    .reserved        = 0U,
+    .build_timestamp = FW_BUILD_TIMESTAMP,
+};
 
 /* ── Private function prototypes ──────────────────────────────────────────── */
 static void SystemClock_Config(void);
@@ -39,7 +49,10 @@ int main(void) {
     GPIO_Init();
 
     uart_log_init();
-    LOG_INFO("STM32MP257FDK M33 firmware starting");
+    LOG_INFO("STM32MP257FDK M33 firmware v%u.%u.%u starting",
+             (unsigned)g_fw_version.major,
+             (unsigned)g_fw_version.minor,
+             (unsigned)g_fw_version.patch);
     LOG_INFO("HAL tick = %lu ms", (unsigned long)HAL_GetTick());
 
     IPC_Init();
@@ -47,6 +60,17 @@ int main(void) {
     uint32_t last_toggle = HAL_GetTick();
 
     while (1) {
+        /* Freeze normal operation once OTA_PREPARE has been acknowledged.
+         * remoteproc on the A35 will stop this core shortly after. */
+        if (IPC_IsOtaPending()) {
+            HAL_GPIO_WritePin(USER_LED_GPIO_PORT, USER_LED_PIN, GPIO_PIN_RESET);
+            LOG_INFO("OTA pending — core halted, waiting for remoteproc stop");
+            while (IPC_IsOtaPending()) {
+                /* Spin here; do not touch shared DDR vrings */
+                __WFI();
+            }
+        }
+
         /* Toggle LED at g_blink_ms interval to show the core is alive */
         uint32_t now = HAL_GetTick();
         if ((now - last_toggle) >= g_blink_ms) {

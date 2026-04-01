@@ -24,6 +24,9 @@
  *   IPC_CMD_LED_SET     (0x02) — ARG_LO: 0=off, 1=on
  *   IPC_CMD_LED_BLINK   (0x03) — ARG = blink interval in ms (uint16)
  *   IPC_CMD_GET_STATUS  (0x04) — M33 replies with current tick count
+ *   IPC_CMD_GET_VERSION (0x05) — M33 replies: ARG_LO=major, ARG_HI=minor, STATUS=patch
+ *   IPC_CMD_OTA_PREPARE (0x06) — M33 freezes IPC and replies ready for remoteproc stop
+ *                                 STATUS: IPC_OTA_READY (0x01) or IPC_OTA_BUSY (0x02)
  */
 
 #ifndef IPC_HANDLER_H
@@ -36,15 +39,21 @@ extern "C" {
 #endif
 
 /* ── Command identifiers ───────────────────────────────────────────────── */
-#define IPC_CMD_PING        0x01U
-#define IPC_CMD_LED_SET     0x02U
-#define IPC_CMD_LED_BLINK   0x03U
-#define IPC_CMD_GET_STATUS  0x04U
+#define IPC_CMD_PING         0x01U
+#define IPC_CMD_LED_SET      0x02U
+#define IPC_CMD_LED_BLINK    0x03U
+#define IPC_CMD_GET_STATUS   0x04U
+#define IPC_CMD_GET_VERSION  0x05U  /**< ARG_LO=major, ARG_HI=minor, STATUS=patch */
+#define IPC_CMD_OTA_PREPARE  0x06U  /**< Graceful OTA prepare; M33 freezes IPC */
 
 /* ── Status codes ──────────────────────────────────────────────────────── */
-#define IPC_STATUS_OK       0x00U
-#define IPC_STATUS_ERR      0xFFU
-#define IPC_STATUS_UNKNOWN  0xFEU
+#define IPC_STATUS_OK        0x00U
+#define IPC_STATUS_ERR       0xFFU
+#define IPC_STATUS_UNKNOWN   0xFEU
+
+/* ── OTA-specific status values (used in response to IPC_CMD_OTA_PREPARE) */
+#define IPC_OTA_READY        0x01U  /**< M33 is ready for remoteproc stop */
+#define IPC_OTA_BUSY         0x02U  /**< M33 cannot be updated right now   */
 
 /* ── Frame markers ─────────────────────────────────────────────────────── */
 #define IPC_SOF_CMD         0xAAU  /**< Start-of-frame: command (A35 → M33) */
@@ -91,6 +100,14 @@ void IPC_Process(void);
  * @return 0 on success, -1 if no TX buffer is available.
  */
 int IPC_Send(const uint8_t *data, uint16_t length);
+
+/**
+ * @brief Returns non-zero after IPC_CMD_OTA_PREPARE has been received.
+ *
+ * The main loop should check this flag and halt normal operations so that
+ * the A35 can safely stop the remoteproc and replace the firmware image.
+ */
+uint8_t IPC_IsOtaPending(void);
 
 #ifdef __cplusplus
 }
