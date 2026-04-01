@@ -32,6 +32,7 @@ add_link_options(
     -T${CMAKE_SOURCE_DIR}/STM32MP257FAIX_FLASH.ld
     -Wl,--gc-sections
     -Wl,-Map=${PROJECT_NAME}.map
+    -Wl,--no-warn-rwx-segments
     --specs=nosys.specs
     --specs=nano.specs
 )
@@ -48,6 +49,7 @@ set(SOURCES
     Core/Src/system_stm32mp2xx.c
     Core/Src/uart_log.c
     Core/Src/ipc_handler.c
+    Core/Src/syscalls.c
 
     # OpenAMP resource table (placed in .resource_table ELF section)
     ../shared/ipc/resource_table.c
@@ -78,10 +80,14 @@ set(INCLUDES
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDES})
 
+# Inject Unix build timestamp so the firmware can report it via IPC_CMD_GET_VERSION
+string(TIMESTAMP FW_BUILD_TIMESTAMP "%s" UTC)
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     STM32MP257Fxx
     USE_HAL_DRIVER
     CORE_CM33
+    FW_BUILD_TIMESTAMP=${FW_BUILD_TIMESTAMP}U
 )
 
 # ─── Post-build: generate .bin and print size ─────────────────────────────────

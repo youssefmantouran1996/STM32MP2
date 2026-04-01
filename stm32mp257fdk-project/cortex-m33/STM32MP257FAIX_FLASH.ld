@@ -17,7 +17,7 @@ _estack = ORIGIN(RAM) + LENGTH(RAM);  /* Initial stack pointer = top of RAM */
 MEMORY
 {
     FLASH (rx)  : ORIGIN = 0x0A000000, LENGTH = 256K   /* M33 SRAM1 */
-    RAM   (rwx) : ORIGIN = 0x0A040000, LENGTH = 64K    /* M33 SRAM2 */
+    RAM   (rw)  : ORIGIN = 0x0A040000, LENGTH = 64K    /* M33 SRAM2 */
 }
 
 SECTIONS
