@@ -32,7 +32,6 @@ add_link_options(
     -T${CMAKE_SOURCE_DIR}/STM32MP257FAIX_FLASH.ld
     -Wl,--gc-sections
     -Wl,-Map=${PROJECT_NAME}.map
-    -Wl,--no-warn-rwx-segments
     --specs=nosys.specs
     --specs=nano.specs
 )
